@@ -79,3 +79,22 @@ class QuizGame:
 
         self.quizzes.append(Quiz(question, choices, answer))
         print("✅ 퀴즈가 추가되었습니다!")
+    def show_quizzes(self):
+        """등록된 퀴즈의 문제 목록을 출력한다."""
+        # 1. 퀴즈가 없으면 안내하고 끝내기
+        if not self.quizzes:
+            print("⚠️ 등록된 퀴즈가 없습니다.")
+            return
+
+        # 2. 제목과 개수 출력
+        print(f"\n 📋 등록된 퀴즈 목록 (총 {len(self.quizzes)}개)")
+
+        # 3. 구분선
+        print("=" * 40)
+
+        # 4. 번호와 문제를 하나씩 출력
+        for number, quiz in enumerate(self.quizzes, start=1):
+            print(f"[{number}] {quiz.question}")
+
+        # 5. 구분선
+        print("=" * 40)
