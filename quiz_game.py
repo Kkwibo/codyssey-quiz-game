@@ -1,3 +1,4 @@
+from quiz import Quiz
 from quiz_data import get_default_quizzes
 
 
@@ -21,6 +22,15 @@ def get_number(prompt, min_value, max_value):
             continue
 
         return number
+
+
+def get_text(prompt):
+    """비어 있지 않은 글자를 입력받을 때까지 반복한다."""
+    while True:
+        text = input(prompt).strip()
+        if text:
+            return text
+        print("⚠️ 내용이 비어 있습니다. 다시 입력하세요.")
 
 
 class QuizGame:
@@ -53,3 +63,19 @@ class QuizGame:
         print("=" * 40)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
         print("=" * 40)
+
+    def add_quiz(self):
+        """사용자에게 문제, 선택지 4개, 정답 번호를 입력받아 퀴즈를 추가한다."""
+        print("\n📌 새로운 퀴즈를 추가합니다.")
+
+        question = get_text("문제를 입력하세요: ")
+
+        choices = []
+        for i in range(1, 5):
+            choice = get_text(f"선택지 {i}: ")
+            choices.append(choice)
+
+        answer = get_number("정답 번호 (1-4): ", 1, 4)
+
+        self.quizzes.append(Quiz(question, choices, answer))
+        print("✅ 퀴즈가 추가되었습니다!")
