@@ -38,6 +38,7 @@ class QuizGame:
 
     def __init__(self):
         self.quizzes = get_default_quizzes()  # Quiz 객체들의 list
+        self.best_score = None # 최고 점수
 
     def play(self):
         """저장된 퀴즈를 순서대로 출제하고 결과를 보여 준다."""
@@ -62,6 +63,9 @@ class QuizGame:
         score = round(correct / total * 100)
         print("=" * 40)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
+        if self.best_score is None or score > self.best_score:
+            self.best_score = score
+            print("🎉 새로운 최고 점수입니다!")
         print("=" * 40)
 
     def add_quiz(self):
@@ -79,6 +83,7 @@ class QuizGame:
 
         self.quizzes.append(Quiz(question, choices, answer))
         print("✅ 퀴즈가 추가되었습니다!")
+
     def show_quizzes(self):
         """등록된 퀴즈의 문제 목록을 출력한다."""
         # 1. 퀴즈가 없으면 안내하고 끝내기
@@ -98,3 +103,11 @@ class QuizGame:
 
         # 5. 구분선
         print("=" * 40)
+
+    def show_score(self):
+                """최고 점수를 출력한다."""
+                if self.best_score is None:
+                    print("⚠️ 아직 퀴즈를 풀지 않았습니다. 먼저 퀴즈를 풀어 보세요.")
+                    return
+    
+                print(f"\n🏆 최고 점수: {self.best_score}점")
