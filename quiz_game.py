@@ -1,11 +1,20 @@
 import json
+import os
+import shutil
 from pathlib import Path
 
 from quiz import Quiz
 from quiz_data import get_default_quizzes
 
-# 프로젝트 루트(이 파일이 있는 폴더)의 state.json
-STATE_FILE = Path(__file__).parent / "state.json"
+# 프로젝트 루트(이 파일이 있는 폴더)에 두는 데이터 파일들
+BASE_DIR = Path(__file__).parent
+STATE_FILE = BASE_DIR / "state.json"            # 현재 데이터
+BACKUP_FILE = BASE_DIR / "state.json.bak"       # 직전 저장본 (자동 백업)
+CORRUPT_FILE = BASE_DIR / "state.json.corrupt"  # 손상된 파일 보관용
+TEMP_FILE = BASE_DIR / "state.json.tmp"         # 저장 중 임시 파일
+
+# 파일이 손상되었다고 판단할 오류들
+CORRUPT_ERRORS = (json.JSONDecodeError, KeyError, TypeError, ValueError)
 
 
 def get_number(prompt, min_value, max_value):
@@ -39,6 +48,19 @@ def get_text(prompt):
         print("⚠️ 내용이 비어 있습니다. 다시 입력하세요.")
 
 
+def read_state(path):
+    """path의 JSON 파일을 읽어 (퀴즈 목록, 최고 점수)를 돌려준다. 형식이 잘못되면 예외를 낸다."""
+    with open(path, "r", encoding="utf-8") as file:
+        data = json.load(file)
+
+    quizzes = [Quiz.from_dict(item) for item in data["quizzes"]]
+    best_score = data.get("best_score")
+    if best_score is not None and (not isinstance(best_score, int) or not 0 <= best_score <= 100):
+        raise ValueError("최고 점수는 0~100 사이 정수여야 합니다.")
+
+    return quizzes, best_score
+
+
 class QuizGame:
     """퀴즈 게임 전체를 관리하는 클래스."""
 
@@ -47,39 +69,74 @@ class QuizGame:
         self.best_score = None   # 최고 점수 (아직 안 풀었으면 None)
         self.load()
 
+    # ---------- 파일 저장 / 불러오기 ----------
+
     def load(self):
-        """state.json에서 퀴즈와 최고 점수를 불러온다. 없거나 손상되면 기본 데이터를 쓴다."""
+        """state.json을 불러온다. 없거나 손상되면 백업에서 복구하고, 백업도 없으면 기본 데이터를 쓴다."""
         try:
-            with open(STATE_FILE, "r", encoding="utf-8") as file:
-                data = json.load(file)
-            self.quizzes = [Quiz.from_dict(item) for item in data["quizzes"]]
-            self.best_score = data.get("best_score")
+            self.quizzes, self.best_score = read_state(STATE_FILE)
             score_text = "없음" if self.best_score is None else f"{self.best_score}점"
             print(f"📂 저장된 데이터를 불러왔습니다. (퀴즈 {len(self.quizzes)}개, 최고 점수 {score_text})")
+            return
         except FileNotFoundError:
+            if self.restore_backup():
+                return
             print("📂 저장된 데이터가 없어 기본 퀴즈로 시작합니다.")
-            self.quizzes = get_default_quizzes()
-            self.best_score = None
-        except (json.JSONDecodeError, KeyError, TypeError, ValueError):
-            print("⚠️ 저장 파일이 손상되어 기본 퀴즈로 복구합니다.")
-            self.quizzes = get_default_quizzes()
-            self.best_score = None
+        except CORRUPT_ERRORS:
+            print("⚠️ 저장 파일이 손상되었습니다. 손상된 파일은 state.json.corrupt로 보관합니다.")
+            self.keep_corrupt_file()
+            if self.restore_backup():
+                return
+            print("⚠️ 사용할 수 있는 백업이 없어 기본 퀴즈로 복구합니다.")
         except OSError:
             print("⚠️ 저장 파일을 읽을 수 없어 기본 퀴즈로 시작합니다.")
-            self.quizzes = get_default_quizzes()
-            self.best_score = None
+            print("   파일 권한을 확인하세요: ls -l state.json  (필요하면 chmod 644 state.json)")
+
+        self.quizzes = get_default_quizzes()
+        self.best_score = None
+
+    def restore_backup(self):
+        """state.json.bak에서 데이터를 복구한다. 성공하면 True를 돌려준다."""
+        try:
+            self.quizzes, self.best_score = read_state(BACKUP_FILE)
+        except (OSError, *CORRUPT_ERRORS):
+            return False
+
+        print(f"♻️ 백업 파일(state.json.bak)에서 복구했습니다. (퀴즈 {len(self.quizzes)}개)")
+        self.save()
+        return True
+
+    def keep_corrupt_file(self):
+        """손상된 state.json을 지우지 않고 state.json.corrupt로 이름을 바꿔 보관한다."""
+        try:
+            os.replace(STATE_FILE, CORRUPT_FILE)
+        except OSError:
+            pass
 
     def save(self):
-        """현재 퀴즈와 최고 점수를 state.json에 저장한다."""
+        """현재 데이터를 state.json에 저장한다. 직전 저장본은 state.json.bak으로 백업한다."""
         data = {
             "quizzes": [quiz.to_dict() for quiz in self.quizzes],
             "best_score": self.best_score,
         }
         try:
-            with open(STATE_FILE, "w", encoding="utf-8") as file:
+            # 1) 임시 파일에 먼저 끝까지 쓴다 (쓰는 도중 꺼져도 원본은 안전)
+            with open(TEMP_FILE, "w", encoding="utf-8") as file:
                 json.dump(data, file, ensure_ascii=False, indent=2)
+            # 2) 기존 state.json을 백업으로 복사한다
+            if STATE_FILE.exists():
+                shutil.copyfile(STATE_FILE, BACKUP_FILE)
+            # 3) 임시 파일을 state.json으로 한 번에 교체한다
+            os.replace(TEMP_FILE, STATE_FILE)
         except OSError:
-            print("⚠️ 파일 저장 중 오류가 발생했습니다.")
+            print("⚠️ 파일 저장 중 오류가 발생했습니다. 폴더 쓰기 권한을 확인하세요.")
+
+    # ---------- 게임 기능 ----------
+
+    @staticmethod
+    def calculate_score(correct, total):
+        """정답 수와 문제 수로 점수(100점 만점, 반올림)를 계산한다."""
+        return round(correct / total * 100)
 
     def play(self):
         """저장된 퀴즈를 순서대로 출제하고 결과를 보여 준다."""
@@ -101,7 +158,7 @@ class QuizGame:
             else:
                 print(f"❌ 오답입니다. 정답은 {quiz.answer}번입니다.")
 
-        score = round(correct / total * 100)
+        score = self.calculate_score(correct, total)
         print("=" * 40)
         print(f"🏆 결과: {total}문제 중 {correct}문제 정답! ({score}점)")
         if self.best_score is None or score > self.best_score:

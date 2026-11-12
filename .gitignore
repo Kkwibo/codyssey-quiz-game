@@ -11,3 +11,6 @@ venv/
 
 # 실행 중 저장되는 게임 데이터
 state.json
+state.json.bak
+state.json.corrupt
+state.json.tmp
