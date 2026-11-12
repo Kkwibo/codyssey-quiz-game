@@ -105,9 +105,40 @@ class QuizGame:
         print("=" * 40)
 
     def show_score(self):
-                """최고 점수를 출력한다."""
-                if self.best_score is None:
-                    print("⚠️ 아직 퀴즈를 풀지 않았습니다. 먼저 퀴즈를 풀어 보세요.")
-                    return
-    
-                print(f"\n🏆 최고 점수: {self.best_score}점")
+        """최고 점수를 출력한다."""
+        if self.best_score is None:
+            print("⚠️ 아직 퀴즈를 풀지 않았습니다. 먼저 퀴즈를 풀어 보세요.")
+            return
+        
+        print(f"\n🏆 최고 점수: {self.best_score}점")
+
+    def show_menu(self):
+        """메뉴 화면을 출력한다."""
+        print()
+        print("=" * 40)
+        print("     🎯 나만의 퀴즈 게임 (개발 상식) 🎯")
+        print("=" * 40)
+        print("1. 퀴즈 풀기")
+        print("2. 퀴즈 추가")
+        print("3. 퀴즈 목록")
+        print("4. 점수 확인")
+        print("5. 종료")
+        print("=" * 40)
+
+    def run(self):
+        """종료를 고를 때까지 메뉴를 보여 주고 선택한 기능을 실행한다."""
+        while True:
+            self.show_menu()
+            choice = get_number("선택: ", 1, 5)
+
+            if choice == 1:
+                self.play()
+            elif choice == 2:
+                self.add_quiz()
+            elif choice == 3:
+                self.show_quizzes()
+            elif choice == 4:
+                self.show_score()
+            elif choice == 5:
+                print("👋 프로그램을 종료합니다.")
+                break
