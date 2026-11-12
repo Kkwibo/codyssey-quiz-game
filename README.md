@@ -291,3 +291,4 @@ git log --oneline --graph
 | 점수 확인 시 `AttributeError: 'QuizGame' object has no attribute 'show_score'` | `show_score`를 8칸 들여써서 `show_quizzes` 안의 내부 함수가 됨 | 4칸으로 맞춰 `QuizGame`의 메서드로 수정 |
 | `git config --list`의 이메일이 `user.noreplay...`로 저장됨 | 이메일 주소 오타 | 올바른 noreply 주소로 `git config --global user.email` 재설정 |
 | Ctrl + C를 누르면 `KeyboardInterrupt` 에러로 비정상 종료 | 예외 처리가 없었음 | `main.py`에서 `KeyboardInterrupt`, `EOFError`를 잡아 저장 후 종료 |
+> 이 줄은 clone 실습을 위해 별도 디렉토리(codyssey-quiz-game-clone)에서 추가한 뒤 push했습니다.
